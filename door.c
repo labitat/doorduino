@@ -65,47 +65,47 @@ static volatile char clk;
 static volatile uint8_t value;
 static volatile uint8_t cnt;
 static uint8_t data[256];
-static char out[47] = "HASH+0000000000000000000000000000000000000000\n";
+static char hash_string[] = "HASH+0000000000000000000000000000000000000000\n";
 
 static volatile int int_counter = 0;
 static volatile int second = 0;
 static volatile int incommingByte;
 
-#define BUFSIZE 64
+#define SERIAL_BUFSIZE 64
 
-struct ring_buffer {
-	uint8_t buf[BUFSIZE];
+struct serial_ringbuf {
+	uint8_t buf[SERIAL_BUFSIZE];
 	uint8_t start;
 	uint8_t end;
 };
 
-static volatile struct ring_buffer buf;
+static volatile struct serial_ringbuf serial_input;
 
 serial_interrupt_rx()
 {
-	uint8_t end = buf.end;
+	uint8_t end = serial_input.end;
 
-	buf.buf[end] = serial_read();
-	buf.end = (end + 1) % BUFSIZE;
+	serial_input.buf[end] = serial_read();
+	serial_input.end = (end + 1) % SERIAL_BUFSIZE;
 }
 
 static inline uint8_t
 serial_available()
 {
-	return buf.start != buf.end;
+	return serial_input.start != serial_input.end;
 }
 
 static char
 serial_getchar()
 {
-	uint8_t start = buf.start;
+	uint8_t start = serial_input.start;
 	char r;
 
-	if (start == buf.end)
+	if (start == serial_input.end)
 		return '\0';
 
-	r = buf.buf[start];
-	buf.start = (start + 1) % BUFSIZE;
+	r = serial_input.buf[start];
+	serial_input.start = (start + 1) % SERIAL_BUFSIZE;
 
 	return r;
 }
@@ -123,7 +123,7 @@ serial_print(const char *str)
 }
 
 static void
-resetData()
+data_reset()
 {
 	unsigned int i;
 
@@ -150,7 +150,7 @@ ISR(INT0_vect)
 }
 
 /*
- * Triggered every millisecond
+ * triggered every millisecond
  */
 timer2_interrupt_a()
 {
@@ -188,7 +188,7 @@ main()
 	serial_rxtx();
 	serial_interrupt_rx_enable();
 
-	pin_mode_output(13);
+	pin13_mode_output();
 
 	pin_mode_input(PIN_CLK);         /* clk             */
 	pin_mode_input(PIN_DATA);        /* data            */
@@ -208,7 +208,7 @@ main()
 	clk = 0;
 	cnt = 0;
 	value = 0;
-	resetData();
+	data_reset();
 	second = 0;
 
 	/* setup timer2 to trigger interrupt a
@@ -224,17 +224,17 @@ main()
 		if (data[cnt - 1] == (uint8_t)0xB4) {
 			if (cnt >= 10) {
 				SHA1Once(data, 256);
-				digest_to_hex(shadigest.data, out + 5);
-				serial_print(out);
+				digest_to_hex(shadigest.data, hash_string + 5);
+				serial_print(hash_string);
 			}
-			resetData();
+			data_reset();
 			cnt = 0;
 		}
 
 		if (second > 10*4) {
 			serial_print("ALIVE\n");
 			second = 0;
-			resetData();
+			data_reset();
 			cnt = 0;
 		}
 
