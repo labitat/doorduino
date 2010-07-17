@@ -69,7 +69,6 @@ static char hash_string[] = "HASH+0000000000000000000000000000000000000000\n";
 
 static volatile int int_counter = 0;
 static volatile int second = 0;
-static volatile int incommingByte;
 
 #define SERIAL_BUFSIZE 64
 
