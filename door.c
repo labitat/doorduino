@@ -56,8 +56,6 @@ union _digest {
 	struct shastate state;
 } shadigest;
 
-static void resetData();
-
 static void SHA1Init();
 static void SHA1Block(const unsigned char *data, const uint8_t len);
 static void SHA1Done();
@@ -65,9 +63,9 @@ static void SHA1Once(const unsigned char *data, int len);
 
 static volatile char clk;
 static volatile uint8_t value;
+static volatile uint8_t cnt;
 static uint8_t data[256];
 static char out[47] = "HASH+0000000000000000000000000000000000000000\n";
-static volatile uint8_t cnt;
 
 static volatile int int_counter = 0;
 static volatile int second = 0;
@@ -124,6 +122,48 @@ serial_print(const char *str)
 	}
 }
 
+static void
+resetData()
+{
+	unsigned int i;
+
+	for (i = 0; i < 256; i++)
+		data[i] = i;
+}
+
+ISR(INT0_vect)
+{
+	if (pin_is_high(PIN_DATA))
+		value |= 1 << (7 - clk);
+
+	clk++;
+	int_counter = 0;
+	second = 0;
+	if (clk == 8) {
+		if (cnt < 255) {
+			data[cnt] = value;
+			cnt++;
+		}
+		clk = 0;
+		value = 0;
+	}
+}
+
+/*
+ * Triggered every millisecond
+ */
+timer2_interrupt_a()
+{
+	RESET_TIMER2;
+	int_counter += 1;
+	if (int_counter == 250) {
+		clk = 0;
+		value = 0;
+		second++;
+		int_counter = 0;
+	}
+}
+
 static char hex_digit[] = {
 	'0', '1', '2', '3', '4', '5', '6', '7',
 	'8', '9', 'A', 'B', 'C', 'D', 'E', 'F'
@@ -158,6 +198,11 @@ main()
 	pin_mode_output(PIN_DAYMODE);    /* stay open       */
 	pin_mode_output(PIN_STATUS_LED); /* yellow status   */
 
+	pin_high(PIN_OPEN_LOCK);
+	pin_high(PIN_DAYMODE);
+	pin_high(PIN_GREEN_LED);
+	pin_high(PIN_YELLOW_LED);
+
 	EICRA = 0x03; /* INT0 rising edge on SCL */
 	EIMSK = 0x01; /* enable only int0        */
 	clk = 0;
@@ -174,11 +219,6 @@ main()
 	timer2_interrupt_a_enable();
 
 	sei();
-
-	pin_high(PIN_OPEN_LOCK);
-	pin_high(PIN_DAYMODE);
-	pin_high(PIN_GREEN_LED);
-	pin_high(PIN_YELLOW_LED);
 
 	while (1) {
 		if (data[cnt - 1] == (uint8_t)0xB4) {
@@ -244,48 +284,6 @@ main()
 	}
 
 	return 0;
-}
-
-static void
-resetData()
-{
-	unsigned int i;
-
-	for (i = 0; i < 256; i++)
-		data[i] = i;
-}
-
-ISR(INT0_vect)
-{
-	if (pin_is_high(PIN_DATA))
-		value |= 1 << (7 - clk);
-
-	clk++;
-	int_counter = 0;
-	second = 0;
-	if (clk == 8) {
-		if (cnt < 255) {
-			data[cnt] = value;
-			cnt++;
-		}
-		clk = 0;
-		value = 0;
-	}
-}
-
-/*
- * Triggered every millisecond
- */
-timer2_interrupt_a()
-{
-	RESET_TIMER2;
-	int_counter += 1;
-	if (int_counter == 250) {
-		clk = 0;
-		value = 0;
-		second++;
-		int_counter = 0;
-	}
 }
 
 /* processes one endianess-corrected block, provided in message */
