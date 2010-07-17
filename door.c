@@ -88,12 +88,6 @@ serial_interrupt_rx()
 	serial_input.end = (end + 1) % SERIAL_BUFSIZE;
 }
 
-static inline uint8_t
-serial_available()
-{
-	return serial_input.start != serial_input.end;
-}
-
 static char
 serial_getchar()
 {
@@ -237,46 +231,51 @@ main()
 			cnt = 0;
 		}
 
-		if (serial_available()) {
-			char inc = serial_getchar();
+		switch (serial_getchar()) {
+		case 'O': /* open */
+			pin_low(PIN_GREEN_LED);
+			pin_low(PIN_OPEN_LOCK);
+			_delay_ms(500);
+			pin_high(PIN_OPEN_LOCK);
+			serial_print("OPENAKCK\n");
+			pin_high(PIN_GREEN_LED);
+			break;
 
-			if (inc == 'O') {        /* open */
-				pin_low(PIN_GREEN_LED);
-				pin_low(PIN_OPEN_LOCK);
-				_delay_ms(500);
-				pin_high(PIN_OPEN_LOCK);
-				/* Serial.println("OPENAKCK"); */
-				serial_print("OPENAKCK\n");
-				pin_high(PIN_GREEN_LED);
-			} else if (inc == 'D') { /* day */
-				pin_low(PIN_GREEN_LED);
-				pin_low(PIN_DAYMODE);     /* day mode   */
-				pin_high(PIN_STATUS_LED); /* status on  */
-			} else if (inc == 'N') { /* night */
-				pin_high(PIN_GREEN_LED);
-				pin_high(PIN_DAYMODE);    /* nightmode  */
-				pin_low(PIN_STATUS_LED);  /* status off */
-			} else if (inc == 'R') { /* rejected */
-				pin_low(PIN_YELLOW_LED);
-				_delay_ms(200);
-				pin_high(PIN_YELLOW_LED);
-				_delay_ms(200);
-				pin_low(PIN_YELLOW_LED);
-				_delay_ms(200);
-				pin_high(PIN_YELLOW_LED);
-			} else if (inc == 'V') { /* validated */
-				pin_low(PIN_GREEN_LED);
-				_delay_ms(300);
-				pin_high(PIN_GREEN_LED);
-				_delay_ms(200);
-				pin_low(PIN_GREEN_LED);
-				_delay_ms(300);
-				pin_high(PIN_GREEN_LED);
-				_delay_ms(200);
-				pin_low(PIN_GREEN_LED);
-				_delay_ms(300);
-				pin_high(PIN_GREEN_LED);
-			}
+		case 'D': /* day */
+			pin_low(PIN_GREEN_LED);
+			pin_low(PIN_DAYMODE);     /* day mode   */
+			pin_high(PIN_STATUS_LED); /* status on  */
+			break;
+
+		case 'N': /* night */
+			pin_high(PIN_GREEN_LED);
+			pin_high(PIN_DAYMODE);    /* nightmode  */
+			pin_low(PIN_STATUS_LED);  /* status off */
+			break;
+
+		case 'R': /* rejected */
+			pin_low(PIN_YELLOW_LED);
+			_delay_ms(200);
+			pin_high(PIN_YELLOW_LED);
+			_delay_ms(200);
+			pin_low(PIN_YELLOW_LED);
+			_delay_ms(200);
+			pin_high(PIN_YELLOW_LED);
+			break;
+
+		case 'V': /* validated */
+			pin_low(PIN_GREEN_LED);
+			_delay_ms(300);
+			pin_high(PIN_GREEN_LED);
+			_delay_ms(200);
+			pin_low(PIN_GREEN_LED);
+			_delay_ms(300);
+			pin_high(PIN_GREEN_LED);
+			_delay_ms(200);
+			pin_low(PIN_GREEN_LED);
+			_delay_ms(300);
+			pin_high(PIN_GREEN_LED);
+			break;
 		}
 
 		_delay_ms(20);
