@@ -91,15 +91,6 @@ serial_interrupt_rx()
 	buf.end = (end + 1) % BUFSIZE;
 }
 
-static void
-serial_init()
-{
-	serial_baud_9600();
-	serial_mode_8e1();
-	serial_rxtx();
-	serial_interrupt_rx_enable();
-}
-
 static inline uint8_t
 serial_available()
 {
@@ -152,7 +143,10 @@ digest_to_hex(const uint8_t data[20], char *out)
 int
 main()
 {
-	serial_init(); /* Serial.begin(9600); */
+	serial_baud_9600();
+	serial_mode_8e2();
+	serial_rxtx();
+	serial_interrupt_rx_enable();
 
 	pin_mode_output(13);
 

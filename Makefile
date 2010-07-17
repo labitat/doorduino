@@ -52,12 +52,12 @@ upload: $(NAME).hex
 list: $(NAME).lss
 
 tty:
-	@echo '  STTY -F$(PORT) cs8 parenb -parodd raw -echo 9600'
-	@$(STTY) -F$(PORT) cs8 parenb -parodd raw -echo 9600
+	@echo '  STTY -F$(PORT) cs8 parenb -parodd cstopb raw -echo 9600'
+	@$(STTY) -F$(PORT) cs8 parenb -parodd cstopb raw -echo 9600
 
 tty2:
-	@echo '  STTY -F$(PORT) cs8 -parenb raw -echo 9600'
-	@$(STTY) -F$(PORT) cs8 -parenb raw -echo 9600
+	@echo '  STTY -F$(PORT) cs8 -parenb -cstopb raw -echo 9600'
+	@$(STTY) -F$(PORT) cs8 -parenb -cstopb raw -echo 9600
 
 clean:
 	rm -f *.o *.elf *.hex *.lss
