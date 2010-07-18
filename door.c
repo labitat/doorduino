@@ -6,9 +6,6 @@
 #include <arduino/serial.h>
 #include <arduino/timer2.h>
 
-#define INIT_TIMER_COUNT 6
-#define RESET_TIMER2 TCNT2 = INIT_TIMER_COUNT
-
 #define PIN_CLK         2
 #define PIN_DATA        3
 #define PIN_GREEN_LED   4
@@ -112,7 +109,6 @@ ISR(INT0_vect)
  */
 timer2_interrupt_a()
 {
-	RESET_TIMER2;
 	int_counter += 1;
 	if (int_counter == 250) {
 		clk = 0;
