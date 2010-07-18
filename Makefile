@@ -31,6 +31,10 @@ all: $(NAME).hex
 	@echo '  CC $@'
 	@$(CC) $(CFLAGS) -c $< -o $@
 
+door.o: door.c sha1.h sha1.c
+	@echo '  CC $@'
+	@$(CC) $(CFLAGS) -c $< -o $@
+
 %.elf: %.o
 	@echo '  LD $@'
 	@$(CC) $(CFLAGS) $(LDFLAGS) $^ -o $@

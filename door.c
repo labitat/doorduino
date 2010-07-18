@@ -6,21 +6,6 @@
 #include <arduino/serial.h>
 #include <arduino/timer2.h>
 
-#define SHA_LITTLE_ENDIAN
-
-/* define this if you want to process more then 65535 bytes */
-/* #define SHA_BIG_DATA */
-
-/* initial values */
-#define init_h0  0x67452301
-#define init_h1  0xEFCDAB89
-#define init_h2  0x98BADCFE
-#define init_h3  0x10325476
-#define init_h4  0xC3D2E1F0
-
-/* bit-shift operation */
-#define rol(value, bits) (((value) << (bits)) | ((value) >> (32 - (bits))))
-
 #define INIT_TIMER_COUNT 6
 #define RESET_TIMER2 TCNT2 = INIT_TIMER_COUNT
 
@@ -33,34 +18,6 @@
 #define PIN_STATUS_LED  a5
 /* #define PIN_STATUS_LED  19 */
 
-union _message {
-	unsigned char data[64];
-	uint32_t w[16];
-} message;
-
-struct shastate {
-	uint32_t h0;
-	uint32_t h1;
-	uint32_t h2;
-	uint32_t h3;
-	uint32_t h4;
-#ifdef SHA_BIG_DATA
-	uint32_t count;
-#else
-	uint16_t count;
-#endif
-};
-
-union _digest {
-	uint8_t data[20];
-	struct shastate state;
-} shadigest;
-
-static void SHA1Init();
-static void SHA1Block(const unsigned char *data, const uint8_t len);
-static void SHA1Done();
-static void SHA1Once(const unsigned char *data, int len);
-
 static volatile char clk;
 static volatile uint8_t value;
 static volatile uint8_t cnt;
@@ -69,6 +26,14 @@ static char hash_string[] = "HASH+0000000000000000000000000000000000000000\n";
 
 static volatile int int_counter = 0;
 static volatile int second = 0;
+
+#define ALLINONE
+#define EXPORT static
+#define SHA1_SHORTCODE
+#include "sha1.c"
+#undef SHA1_SHORTCODE
+#undef EXPORT
+#undef ALLINONE
 
 #define SERIAL_BUFSIZE 64
 
@@ -163,13 +128,13 @@ static char hex_digit[] = {
 };
 
 static void
-digest_to_hex(const uint8_t data[20], char *out)
+digest_to_hex(const char digest[SHA1_DIGEST_LENGTH], char *out)
 {
 	uint8_t i;
 
 	for (i = 0; i < 20; i++) {
-		*out++ = hex_digit[data[i] >> 4];
-		*out++ = hex_digit[data[i] & 0x0F];
+		*out++ = hex_digit[(uint8_t)digest[i] >> 4];
+		*out++ = hex_digit[(uint8_t)digest[i] & 0x0F];
 	}
 }
 
@@ -214,10 +179,15 @@ main()
 	sei();
 
 	while (1) {
-		if (data[cnt - 1] == (uint8_t)0xB4) {
+		if (data[cnt - 1] == 0xB4) {
 			if (cnt >= 10) {
-				SHA1Once(data, 256);
-				digest_to_hex(shadigest.data, hash_string + 5);
+				struct sha1_context ctx;
+				char digest[SHA1_DIGEST_LENGTH];
+
+				sha1_init(&ctx);
+				sha1_update(&ctx, (char *)data, 256);
+				sha1_final(&ctx, digest);
+				digest_to_hex(digest, hash_string + 5);
 				serial_print(hash_string);
 			}
 			data_reset();
@@ -282,152 +252,4 @@ main()
 	}
 
 	return 0;
-}
-
-/* processes one endianess-corrected block, provided in message */
-static void
-SHA1()
-{
-	uint8_t i;
-	uint32_t a,b,c,d,e,f,k,t;
-
-	a = shadigest.state.h0;
-	b = shadigest.state.h1;
-	c = shadigest.state.h2;
-	d = shadigest.state.h3;
-	e = shadigest.state.h4;
-
-	/* main loop: 80 rounds */
-	for (i = 0; i <= 79; i++) {
-		if (i <= 19) {
-			f = d ^ (b & (c ^ d));
-			k = 0x5A827999;
-		} else if (i <= 39) {
-			f = b ^ c ^ d;
-			k = 0x6ED9EBA1;
-		} else if (i <= 59) {
-			f = (b & c) | (d & (b | c));
-			k = 0x8F1BBCDC;
-		} else {
-			f = b ^ c ^ d;
-			k = 0xCA62C1D6;
-		}
-
-		/* blow up to 80 dwords while in the loop, save some RAM */
-		if (i >= 16) {
-			t = rol(message.w[(i+13) & 15] ^
-			        message.w[(i+8) & 15] ^
-			        message.w[(i+2)&15] ^
-				message.w[i & 15], 1);
-			message.w[i & 15] = t;
-		}
-
-		t = rol(a, 5) + f + e + k + message.w[i & 15];
-		e = d;
-		d = c;
-		c = rol(b, 30);
-		b = a;
-		a = t;
-	}
-
-	shadigest.state.h0 += a;
-	shadigest.state.h1 += b;
-	shadigest.state.h2 += c;
-	shadigest.state.h3 += d;
-	shadigest.state.h4 += e;
-}
-
-static void
-SHA1Init()
-{
-	shadigest.state.h0 = init_h0;
-	shadigest.state.h1 = init_h1;
-	shadigest.state.h2 = init_h2;
-	shadigest.state.h3 = init_h3;
-	shadigest.state.h4 = init_h4;
-	shadigest.state.count = 0;
-}
-
-/*
- * Hashes blocks of 64 bytes of data.
- * Only the last block *must* be smaller than 64 bytes.
- */
-static void
-SHA1Block(const unsigned char *data, const uint8_t len)
-{
-	uint8_t i;
-
-	/* clear all bytes in data block that are not overwritten anyway */
-	for (i = len >> 2; i <= 15; i++)
-		message.w[i] = 0;
-
-#ifdef SHA_LITTLE_ENDIAN
-	/* swap bytes */
-	for (i = 0; i < len; i += 4) {
-		message.data[i] = data[i+3];
-		message.data[i+1] = data[i+2];
-		message.data[i+2] = data[i+1];
-		message.data[i+3] = data[i];
-	}
-#else
-	memcpy(message.data, data, len);
-#endif
-
-	/* remember number of bytes processed for final block */
-	shadigest.state.count += len;
-
-	if (len < 64) {
-		/* final block: mask bytes accidentally copied by for-loop
-		 * and do the padding */
-		message.w[len >> 2] &= 0xffffffffL << (((~len & 3) * 8) + 8);
-		message.w[len >> 2] |= 0x80L << ((~len & 3) * 8);
-		/* there is space for a qword containing the size at the end
-		 * of the block */
-		if (len <= 55)
-			message.w[15] = (uint32_t)(shadigest.state.count) * 8;
-	}
-
-	SHA1();
-
-	/* was last data block, but there wasn't space for the size:
-	 * process another block */
-	if (len >= 56 && len < 64) {
-		for (i = 0; i <= 14; i++)
-			message.w[i] = 0;
-
-		message.w[15] = (uint32_t)(shadigest.state.count) * 8;
-		SHA1();
-	}
-}
-
-/* Correct the endianess if needed */
-static void
-SHA1Done()
-{
-#ifdef SHA_LITTLE_ENDIAN
-	uint8_t i;
-	unsigned char j;
-	/* swap bytes */
-	for (i = 0; i <= 4; i++) {
-		j = shadigest.data[4*i];
-		shadigest.data[4*i] = shadigest.data[4*i + 3];
-		shadigest.data[4*i + 3] = j;
-		j = shadigest.data[4*i + 1];
-		shadigest.data[4*i + 1] = shadigest.data[4*i + 2];
-		shadigest.data[4*i + 2] = j;
-	}
-#endif
-}
-
-/* Hashes just one arbitrarily sized chunk of data */
-static void
-SHA1Once(const unsigned char* data, int len)
-{
-	SHA1Init();
-	while (len >= 0) {
-		SHA1Block(data, len > 64 ? 64 : len);
-		len -= 64;
-		data += 64;
-	}
-	SHA1Done();
 }
