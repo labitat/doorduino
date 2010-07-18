@@ -46,8 +46,14 @@ serial_getchar()
 		return '\0';
 
 	r = serial_input.buf[start];
-	serial_input.start = (start + 1) & (SERIAL_INBUF - 1);
+	start = (start + 1) & (SERIAL_INBUF - 1);
 
+	cli();
+	if (start == serial_input.end)
+		events &= ~EV_SERIAL;
+	sei();
+
+	serial_input.start = start;
 	return r;
 }
 

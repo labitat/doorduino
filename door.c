@@ -5,6 +5,7 @@
 #include <arduino/pins.h>
 #include <arduino/serial.h>
 #include <arduino/timer2.h>
+#include <arduino/sleep.h>
 
 #define PIN_CLK         2
 #define PIN_DATA        3
@@ -22,6 +23,15 @@ static uint8_t data[256];
 
 static volatile int int_counter = 0;
 static volatile int second = 0;
+
+enum events {
+	EV_NONE   = 0,
+	EV_SERIAL = 1 << 0,
+	EV_TIME   = 1 << 1,
+	EV_DATA   = 1 << 2
+};
+
+volatile uint8_t events = EV_NONE;
 
 #define ALLINONE
 #define EXPORT static
@@ -62,6 +72,7 @@ ISR(INT0_vect)
 		if (cnt < 255) {
 			data[cnt] = value;
 			cnt++;
+			events |= EV_DATA;
 		}
 		clk = 0;
 		value = 0;
@@ -79,6 +90,7 @@ timer2_interrupt_a()
 		value = 0;
 		second++;
 		int_counter = 0;
+		events |= EV_TIME;
 	}
 }
 
@@ -117,29 +129,23 @@ main()
 	timer2_clock_d128();
 	timer2_interrupt_a_enable();
 
-	sei();
+	sleep_mode_idle();
 
 	while (1) {
-		if (data[cnt - 1] == 0xB4) {
-			if (cnt >= 10) {
-				struct sha1_context ctx;
-				char digest[SHA1_DIGEST_LENGTH];
-
-				sha1_init(&ctx);
-				sha1_update(&ctx, (char *)data, 256);
-				sha1_final(&ctx, digest);
-				serial_print("HASH+");
-				serial_hexdump(digest, SHA1_DIGEST_LENGTH);
-				serial_print("\n");
-			}
-			data_reset();
+		/*
+		 * sleep if no new events need to be handled
+		 * while avoiding race conditions. see
+		 * http://www.nongnu.org/avr-libc/user-manual/group__avr__sleep.html
+		 */
+		cli();
+		if (events == EV_NONE) {
+			sleep_enable();
+			sei();
+			sleep_cpu();
+			sleep_disable();
+			continue;
 		}
-
-		if (second > 10*4) {
-			serial_print("ALIVE\n");
-			second = 0;
-			data_reset();
-		}
+		sei();
 
 		switch (serial_getchar()) {
 		case 'O': /* open */
@@ -149,19 +155,19 @@ main()
 			pin_high(PIN_OPEN_LOCK);
 			serial_print("OPENAKCK\n");
 			pin_high(PIN_GREEN_LED);
-			break;
+			continue;
 
 		case 'D': /* day */
 			pin_low(PIN_GREEN_LED);
 			pin_low(PIN_DAYMODE);     /* day mode   */
 			pin_high(PIN_STATUS_LED); /* status on  */
-			break;
+			continue;
 
 		case 'N': /* night */
 			pin_high(PIN_GREEN_LED);
 			pin_high(PIN_DAYMODE);    /* nightmode  */
 			pin_low(PIN_STATUS_LED);  /* status off */
-			break;
+			continue;
 
 		case 'R': /* rejected */
 			pin_low(PIN_YELLOW_LED);
@@ -171,7 +177,7 @@ main()
 			pin_low(PIN_YELLOW_LED);
 			_delay_ms(200);
 			pin_high(PIN_YELLOW_LED);
-			break;
+			continue;
 
 		case 'V': /* validated */
 			pin_low(PIN_GREEN_LED);
@@ -185,10 +191,33 @@ main()
 			pin_low(PIN_GREEN_LED);
 			_delay_ms(300);
 			pin_high(PIN_GREEN_LED);
-			break;
+			continue;
 		}
 
-		_delay_ms(20);
+		events &= ~EV_DATA;
+		if (cnt > 0 && data[cnt - 1] == 0xB4) {
+			if (cnt >= 10) {
+				struct sha1_context ctx;
+				char digest[SHA1_DIGEST_LENGTH];
+
+				sha1_init(&ctx);
+				sha1_update(&ctx, (char *)data, 256);
+				sha1_final(&ctx, digest);
+				serial_print("HASH+");
+				serial_hexdump(digest, SHA1_DIGEST_LENGTH);
+				serial_print("\n");
+			}
+			data_reset();
+			continue;
+		}
+
+		events &= ~EV_TIME;
+		if (second > 10*4) {
+			serial_print("ALIVE\n");
+			second = 0;
+			data_reset();
+			continue;
+		}
 	}
 
 	return 0;
