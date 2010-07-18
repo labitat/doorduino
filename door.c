@@ -85,7 +85,7 @@ serial_interrupt_rx()
 	uint8_t end = serial_input.end;
 
 	serial_input.buf[end] = serial_read();
-	serial_input.end = (end + 1) % SERIAL_BUFSIZE;
+	serial_input.end = (end + 1) & (SERIAL_BUFSIZE - 1);
 }
 
 static char
@@ -98,7 +98,7 @@ serial_getchar()
 		return '\0';
 
 	r = serial_input.buf[start];
-	serial_input.start = (start + 1) % SERIAL_BUFSIZE;
+	serial_input.start = (start + 1) & (SERIAL_BUFSIZE - 1);
 
 	return r;
 }
