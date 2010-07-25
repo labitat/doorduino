@@ -15,9 +15,9 @@
 #define PIN_STATUS_LED  a5
 /* #define PIN_STATUS_LED  19 */
 
-static volatile char clk;
-static volatile uint8_t value;
-static volatile uint8_t cnt;
+static volatile char clk = 0;
+static volatile uint8_t value = 0;
+static volatile uint8_t cnt = 0;
 static uint8_t data[256];
 static char hash_string[] = "HASH+0000000000000000000000000000000000000000\n";
 
@@ -159,11 +159,8 @@ main()
 
 	EICRA = 0x03; /* INT0 rising edge on SCL */
 	EIMSK = 0x01; /* enable only int0        */
-	clk = 0;
-	cnt = 0;
-	value = 0;
+
 	data_reset();
-	second = 0;
 
 	/* setup timer2 to trigger interrupt a
 	 * once every millisecond */
