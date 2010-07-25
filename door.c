@@ -84,6 +84,8 @@ data_reset()
 
 	for (i = 0; i < 256; i++)
 		data[i] = i;
+
+	cnt = 0;
 }
 
 ISR(INT0_vect)
@@ -184,14 +186,12 @@ main()
 				serial_print(hash_string);
 			}
 			data_reset();
-			cnt = 0;
 		}
 
 		if (second > 10*4) {
 			serial_print("ALIVE\n");
 			second = 0;
 			data_reset();
-			cnt = 0;
 		}
 
 		switch (serial_getchar()) {
