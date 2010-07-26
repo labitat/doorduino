@@ -19,7 +19,6 @@ static volatile char clk = 0;
 static volatile uint8_t value = 0;
 static volatile uint8_t cnt = 0;
 static uint8_t data[256];
-static char hash_string[] = "HASH+0000000000000000000000000000000000000000\n";
 
 static volatile int int_counter = 0;
 static volatile int second = 0;
@@ -31,9 +30,11 @@ static volatile int second = 0;
 #include "sha1.c"
 #undef SHA1_SHORTCODE
 
-#define SERIAL_BUFSIZE 64
+#define SERIAL_INBUF 64
+#define SERIAL_OUTBUF 128
 #include "serial.c"
-#undef SERIAL_BUFSIZE
+#undef SERIAL_INBUF
+#undef SERIAL_OUTBUF
 
 #undef EXPORT
 #undef ALLINONE
@@ -78,22 +79,6 @@ timer2_interrupt_a()
 		value = 0;
 		second++;
 		int_counter = 0;
-	}
-}
-
-static char hex_digit[] = {
-	'0', '1', '2', '3', '4', '5', '6', '7',
-	'8', '9', 'A', 'B', 'C', 'D', 'E', 'F'
-};
-
-static void
-digest_to_hex(const char digest[SHA1_DIGEST_LENGTH], char *out)
-{
-	uint8_t i;
-
-	for (i = 0; i < 20; i++) {
-		*out++ = hex_digit[(uint8_t)digest[i] >> 4];
-		*out++ = hex_digit[(uint8_t)digest[i] & 0x0F];
 	}
 }
 
@@ -143,8 +128,9 @@ main()
 				sha1_init(&ctx);
 				sha1_update(&ctx, (char *)data, 256);
 				sha1_final(&ctx, digest);
-				digest_to_hex(digest, hash_string + 5);
-				serial_print(hash_string);
+				serial_print("HASH+");
+				serial_hexdump(digest, SHA1_DIGEST_LENGTH);
+				serial_print("\n");
 			}
 			data_reset();
 		}
