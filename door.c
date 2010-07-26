@@ -26,56 +26,17 @@ static volatile int second = 0;
 
 #define ALLINONE
 #define EXPORT static
+
 #define SHA1_SHORTCODE
 #include "sha1.c"
 #undef SHA1_SHORTCODE
-#undef EXPORT
-#undef ALLINONE
 
 #define SERIAL_BUFSIZE 64
+#include "serial.c"
+#undef SERIAL_BUFSIZE
 
-struct serial_ringbuf {
-	uint8_t buf[SERIAL_BUFSIZE];
-	uint8_t start;
-	uint8_t end;
-};
-
-static volatile struct serial_ringbuf serial_input;
-
-serial_interrupt_rx()
-{
-	uint8_t end = serial_input.end;
-
-	serial_input.buf[end] = serial_read();
-	serial_input.end = (end + 1) & (SERIAL_BUFSIZE - 1);
-}
-
-static char
-serial_getchar()
-{
-	uint8_t start = serial_input.start;
-	char r;
-
-	if (start == serial_input.end)
-		return '\0';
-
-	r = serial_input.buf[start];
-	serial_input.start = (start + 1) & (SERIAL_BUFSIZE - 1);
-
-	return r;
-}
-
-static void
-serial_print(const char *str)
-{
-	uint8_t c;
-
-	for (c = *str; c; c = *++str) {
-		while (!serial_writeable());
-
-		serial_write(c);
-	}
-}
+#undef EXPORT
+#undef ALLINONE
 
 static void
 data_reset()
