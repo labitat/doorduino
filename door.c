@@ -4,7 +4,7 @@
 
 #include <arduino/pins.h>
 #include <arduino/serial.h>
-#include <arduino/timer2.h>
+#include <arduino/timer1.h>
 #include <arduino/sleep.h>
 
 #define PIN_CLK         2
@@ -21,7 +21,6 @@ static volatile uint8_t value = 0;
 static volatile uint8_t cnt = 0;
 static uint8_t data[256];
 
-static volatile int int_counter = 0;
 static volatile int second = 0;
 
 enum events {
@@ -66,7 +65,8 @@ ISR(INT0_vect)
 		value |= 1 << (7 - clk);
 
 	clk++;
-	int_counter = 0;
+	timer1_clock_reset();
+	timer1_count_set(0);
 	second = 0;
 	if (clk == 8) {
 		if (cnt < 255) {
@@ -80,18 +80,14 @@ ISR(INT0_vect)
 }
 
 /*
- * triggered every millisecond
+ * triggered 4 times every second
  */
-timer2_interrupt_a()
+timer1_interrupt_a()
 {
-	int_counter += 1;
-	if (int_counter == 250) {
-		clk = 0;
-		value = 0;
-		second++;
-		int_counter = 0;
-		events |= EV_TIME;
-	}
+	clk = 0;
+	value = 0;
+	second++;
+	events |= EV_TIME;
 }
 
 int
@@ -122,12 +118,11 @@ main()
 
 	data_reset();
 
-	/* setup timer2 to trigger interrupt a
-	 * once every millisecond */
-	timer2_mode_ctc();
-	timer2_compare_a_set(124);
-	timer2_clock_d128();
-	timer2_interrupt_a_enable();
+	/* setup timer1 to trigger interrupt a 4 times a second */
+	timer1_mode_ctc();
+	timer1_compare_a_set(62499);
+	timer1_clock_d64();
+	timer1_interrupt_a_enable();
 
 	sleep_mode_idle();
 
