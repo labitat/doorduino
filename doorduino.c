@@ -14,7 +14,6 @@
 #define PIN_OPEN_LOCK   6
 #define PIN_DAYMODE     7
 #define PIN_STATUS_LED  a5
-/* #define PIN_STATUS_LED  19 */
 
 static volatile char clk = 0;
 static volatile uint8_t value = 0;
@@ -113,8 +112,8 @@ main()
 	pin_high(PIN_GREEN_LED);
 	pin_high(PIN_YELLOW_LED);
 
-	EICRA = 0x03; /* INT0 rising edge on SCL */
-	EIMSK = 0x01; /* enable only int0        */
+	EICRA = 0x03; /* INT0 rising edge on PIN_CLK */
+	EIMSK = 0x01; /* enable only int0            */
 
 	data_reset();
 
