@@ -13,7 +13,7 @@ FORMAT = ihex
 PORT = /dev/ttyUSB0
 BAUD_RATE = 57600
 PROGRAMMER = arduino
-ARDUINO_HEADERS = ..
+ARDUINO_HEADERS = .
 CFLAGS = -Os -g -mmcu=$(MCU) -DF_CPU=$(F_CPU) \
          -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums \
          -Wall -Wextra -pedantic -I$(ARDUINO_HEADERS)
