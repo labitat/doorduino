@@ -1,5 +1,13 @@
-/* Public API for Steve Reid's public domain SHA-1 implementation */
-/* This file is in the public domain */
+/*
+ * SHA-1 in C
+ * by Emil Renner Berthing <esmil@mailme.dk>
+ *
+ * Based on code in public domain by
+ * Steve Reid <sreid@sea-to-sky.net>
+ *
+ * Still 100% Public Domain
+ */
+
 #ifndef _SHA1_H
 #define _SHA1_H
 
