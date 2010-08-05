@@ -39,6 +39,8 @@ serial_interrupt_rx()
 
 	serial_input.buf[end] = serial_read();
 	serial_input.end = (end + 1) & (SERIAL_INBUF - 1);
+
+	events |= EV_SERIAL;
 }
 
 serial_interrupt_dre()
