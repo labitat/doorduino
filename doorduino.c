@@ -24,6 +24,12 @@
 #include <arduino/timer1.h>
 #include <arduino/sleep.h>
 
+#define ALLINONE
+#define EXPORT static
+
+#include "serial.h"
+#include "sha1.h"
+
 #define PIN_CLK         2
 #define PIN_DATA        3
 #define PIN_GREEN_LED   4
@@ -48,21 +54,15 @@ enum events {
 
 volatile uint8_t events = EV_NONE;
 
-#define ALLINONE
-#define EXPORT static
-
-#define SHA1_SHORTCODE
-#include "sha1.c"
-#undef SHA1_SHORTCODE
-
 #define SERIAL_INBUF 64
 #define SERIAL_OUTBUF 128
 #include "serial.c"
 #undef SERIAL_INBUF
 #undef SERIAL_OUTBUF
 
-#undef EXPORT
-#undef ALLINONE
+#define SHA1_SHORTCODE
+#include "sha1.c"
+#undef SHA1_SHORTCODE
 
 static void
 data_reset()
@@ -109,10 +109,7 @@ timer1_interrupt_a()
 int main() __attribute__((noreturn));
 int main()
 {
-	serial_baud_9600();
-	serial_mode_8e2();
-	serial_rxtx();
-	serial_interrupt_rx_enable();
+	serial_init(9600, 8e2);
 
 	pin13_mode_output();
 

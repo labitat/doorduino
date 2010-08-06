@@ -21,6 +21,14 @@
 #define EXPORT
 #endif
 
+#ifndef SERIAL_INBUF
+#define SERIOL_INBUF 128
+#endif
+
+#ifndef SERIAL_OUTBUF
+#define SERIAL_OUTBUF 128
+#endif
+
 static volatile struct {
 	uint8_t buf[SERIAL_INBUF];
 	uint8_t start;
@@ -64,7 +72,7 @@ serial_getchar()
 	if (start == serial_input.end)
 		return '\0';
 
-	r = serial_input.buf[start];
+	r = (char)serial_input.buf[start];
 	start = (start + 1) & (SERIAL_INBUF - 1);
 
 	cli();
@@ -88,7 +96,7 @@ serial_print(const char *str)
 	serial_interrupt_dre_enable();
 }
 
-static char hex_digit[] = {
+static char serial_hexdigit[] = {
 	'0', '1', '2', '3', '4', '5', '6', '7',
 	'8', '9', 'A', 'B', 'C', 'D', 'E', 'F'
 };
@@ -102,9 +110,9 @@ serial_hexdump(const void *data, size_t len)
 	for (; len > 0; len--, p++) {
 		uint8_t c = *p;
 
-		serial_output.buf[end] = hex_digit[c >> 4];
+		serial_output.buf[end] = serial_hexdigit[c >> 4];
 		end = (end + 1) & (SERIAL_OUTBUF - 1);
-		serial_output.buf[end] = hex_digit[c & 0x0F];
+		serial_output.buf[end] = serial_hexdigit[c & 0x0F];
 		end = (end + 1) & (SERIAL_OUTBUF - 1);
 	}
 
