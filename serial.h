@@ -25,6 +25,7 @@
 	serial_interrupt_rx_enable()
 
 #ifndef ALLINONE
+uint8_t serial_available();
 char serial_getchar();
 void serial_print(const char *str);
 void serial_hexdump(const void *data, size_t len);

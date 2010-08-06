@@ -106,6 +106,66 @@ timer1_interrupt_a()
 	events |= EV_TIME;
 }
 
+static void
+handle_serial_input()
+{
+	while (1) {
+		switch (serial_getchar()) {
+		case '\0':
+			cli();
+			if (!serial_available())
+				events &= ~EV_SERIAL;
+			sei();
+			return;
+
+		case 'O': /* open */
+			pin_low(PIN_GREEN_LED);
+			pin_low(PIN_OPEN_LOCK);
+			_delay_ms(500);
+			pin_high(PIN_OPEN_LOCK);
+			serial_print("OPENAKCK\n");
+			pin_high(PIN_GREEN_LED);
+			break;
+
+		case 'D': /* day */
+			pin_low(PIN_GREEN_LED);
+			pin_low(PIN_DAYMODE);     /* day mode   */
+			pin_high(PIN_STATUS_LED); /* status on  */
+			break;
+
+		case 'N': /* night */
+			pin_high(PIN_GREEN_LED);
+			pin_high(PIN_DAYMODE);    /* nightmode  */
+			pin_low(PIN_STATUS_LED);  /* status off */
+			break;
+
+		case 'R': /* rejected */
+			pin_low(PIN_YELLOW_LED);
+			_delay_ms(200);
+			pin_high(PIN_YELLOW_LED);
+			_delay_ms(200);
+			pin_low(PIN_YELLOW_LED);
+			_delay_ms(200);
+			pin_high(PIN_YELLOW_LED);
+			break;
+
+		case 'V': /* validated */
+			pin_low(PIN_GREEN_LED);
+			_delay_ms(300);
+			pin_high(PIN_GREEN_LED);
+			_delay_ms(200);
+			pin_low(PIN_GREEN_LED);
+			_delay_ms(300);
+			pin_high(PIN_GREEN_LED);
+			_delay_ms(200);
+			pin_low(PIN_GREEN_LED);
+			_delay_ms(300);
+			pin_high(PIN_GREEN_LED);
+			break;
+		}
+	}
+}
+
 int main() __attribute__((noreturn));
 int main()
 {
@@ -155,50 +215,8 @@ int main()
 		}
 		sei();
 
-		switch (serial_getchar()) {
-		case 'O': /* open */
-			pin_low(PIN_GREEN_LED);
-			pin_low(PIN_OPEN_LOCK);
-			_delay_ms(500);
-			pin_high(PIN_OPEN_LOCK);
-			serial_print("OPENAKCK\n");
-			pin_high(PIN_GREEN_LED);
-			continue;
-
-		case 'D': /* day */
-			pin_low(PIN_GREEN_LED);
-			pin_low(PIN_DAYMODE);     /* day mode   */
-			pin_high(PIN_STATUS_LED); /* status on  */
-			continue;
-
-		case 'N': /* night */
-			pin_high(PIN_GREEN_LED);
-			pin_high(PIN_DAYMODE);    /* nightmode  */
-			pin_low(PIN_STATUS_LED);  /* status off */
-			continue;
-
-		case 'R': /* rejected */
-			pin_low(PIN_YELLOW_LED);
-			_delay_ms(200);
-			pin_high(PIN_YELLOW_LED);
-			_delay_ms(200);
-			pin_low(PIN_YELLOW_LED);
-			_delay_ms(200);
-			pin_high(PIN_YELLOW_LED);
-			continue;
-
-		case 'V': /* validated */
-			pin_low(PIN_GREEN_LED);
-			_delay_ms(300);
-			pin_high(PIN_GREEN_LED);
-			_delay_ms(200);
-			pin_low(PIN_GREEN_LED);
-			_delay_ms(300);
-			pin_high(PIN_GREEN_LED);
-			_delay_ms(200);
-			pin_low(PIN_GREEN_LED);
-			_delay_ms(300);
-			pin_high(PIN_GREEN_LED);
+		if (events & EV_SERIAL) {
+			handle_serial_input();
 			continue;
 		}
 

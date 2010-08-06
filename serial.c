@@ -63,6 +63,12 @@ serial_interrupt_dre()
 	}
 }
 
+EXPORT uint8_t
+serial_available()
+{
+	return serial_input.start != serial_input.end;
+}
+
 EXPORT char
 serial_getchar()
 {
@@ -73,14 +79,8 @@ serial_getchar()
 		return '\0';
 
 	r = (char)serial_input.buf[start];
-	start = (start + 1) & (SERIAL_INBUF - 1);
+	serial_input.start = (start + 1) & (SERIAL_INBUF - 1);
 
-	cli();
-	if (start == serial_input.end)
-		events &= ~EV_SERIAL;
-	sei();
-
-	serial_input.start = start;
 	return r;
 }
 
