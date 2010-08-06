@@ -106,8 +106,8 @@ timer1_interrupt_a()
 	events |= EV_TIME;
 }
 
-int
-main()
+int main() __attribute__((noreturn));
+int main()
 {
 	serial_baud_9600();
 	serial_mode_8e2();
@@ -230,6 +230,4 @@ main()
 			continue;
 		}
 	}
-
-	return 0;
 }
