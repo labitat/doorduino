@@ -169,8 +169,8 @@ handle_serial_input()
 	}
 }
 
-int main() __attribute__((noreturn));
-int main()
+__attribute__((noreturn)) int
+main()
 {
 	serial_init(9600, 8e2);
 
