@@ -75,7 +75,10 @@ data_reset()
 	cnt = 0;
 }
 
-ISR(INT0_vect)
+/*
+ * triggered when the clock signal goes high
+ */
+pin2_interrupt()
 {
 	if (pin_is_high(PIN_DATA))
 		value |= 1 << (7 - clk);
@@ -186,8 +189,10 @@ int main()
 	pin_high(PIN_GREEN_LED);
 	pin_high(PIN_YELLOW_LED);
 
-	EICRA = 0x03; /* INT0 rising edge on PIN_CLK */
-	EIMSK = 0x01; /* enable only int0            */
+	/* trigger pin2 interrupt when the clock
+	 * signal goes high */
+	pin2_interrupt_mode_rising();
+	pin2_interrupt_enable();
 
 	data_reset();
 
