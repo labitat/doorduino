@@ -36,7 +36,7 @@
 #define PIN_YELLOW_LED  5
 #define PIN_OPEN_LOCK   6
 #define PIN_DAYMODE     7
-#define PIN_STATUS_LED  a5
+#define PIN_STATUS_LED  A5
 
 static volatile char clk = 0;
 static volatile uint8_t value = 0;
