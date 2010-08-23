@@ -11,7 +11,7 @@ MCU = atmega328p
 F_CPU = 16000000UL
 FORMAT = ihex
 PORT = /dev/ttyUSB0
-BAUD_RATE = 57600
+BAUD_RATE = 19200
 PROGRAMMER = arduino
 ARDUINO_HEADERS = .
 CFLAGS = -O2 -g -mmcu=$(MCU) -DF_CPU=$(F_CPU) \
