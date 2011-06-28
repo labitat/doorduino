@@ -1,24 +1,46 @@
-CC = avr-gcc
+CC      = avr-gcc
 OBJCOPY = avr-objcopy
 OBJDUMP = avr-objdump
 AVRDUDE = avrdude
-STTY = stty
-SED = sed
+STTY    = stty
+SED     = sed
+CAT     = cat
+ARDUINO_HEADERS = .
 
 NAME = doorduino
 
-MCU = atmega328p
-F_CPU = 16000000UL
-FORMAT = ihex
-PORT = /dev/ttyUSB0
-BAUD_RATE = 19200
+FORMAT     = ihex
 PROGRAMMER = arduino
-ARDUINO_HEADERS = .
-CFLAGS = -O2 -g -mmcu=$(MCU) -DF_CPU=$(F_CPU) \
-         -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums \
-         -Wall -Wextra -pedantic -I$(ARDUINO_HEADERS)
+CFLAGS     = -O2 -g -mmcu=$(MCU) -DF_CPU=$(F_CPU) -I$(ARDUINO_HEADERS) \
+             -funsigned-char -fpack-struct -fshort-enums \
+             -Wall -Wextra -Wno-variadic-macros -pedantic
 
-.PHONY: all list tty
+## Duemilanove
+MCU        = atmega328p
+F_CPU      = 16000000UL
+PORT       = /dev/ttyUSB0
+PROG_BAUD  = 57600
+
+## Uno
+#MCU        = atmega328p
+#F_CPU      = 16000000UL
+#PORT       = /dev/ttyACM0
+#PROG_BAUD  = 115200
+
+MODE_RAW = raw -echo
+MODE_7   = cs7
+MODE_8   = cs8
+MODE_N   = -parenb
+MODE_E   = parenb -parodd
+MODE_O   = parenb parodd
+MODE_1   = -cstopb
+MODE_2   = cstopb
+
+## Change this according to your code to make the tty and cat targets work
+BAUD     = 9600
+MODE     = $(MODE_RAW) $(MODE_8) $(MODE_E) $(MODE_2)# 8E2
+
+.PHONY: all list tty cat
 .PRECIOUS: %.o %.elf
 
 all: $(NAME).hex
@@ -41,23 +63,26 @@ doorduino.o: doorduino.c sha1.h sha1.c serial.c
 
 %.hex: %.elf
 	@echo '  OBJCOPY $@'
-	@$(OBJCOPY) -O $(FORMAT) -R .eeprom -S $< $@ && \
-	  echo "  $$((0x$$($(OBJDUMP) -h $@ | \
-	    $(SED) -n '6{s/^  0 \.sec1         //;s/ .*//;p}'))) bytes"
+	@$(OBJCOPY) -O $(FORMAT) -R .eeprom -S $< $@
+	@echo "  $$((0x$$($(OBJDUMP) -h $@ | $(SED) -n '6{s/^  0 \.sec1         //;s/ .*//;p}'))) bytes"
+
 
 # Create extended listing file from ELF output file.
 %.lss: %.elf
 	@echo '  OBJDUMP > $@'
 	@$(OBJDUMP) -h -S $< > $@
 
-upload: $(NAME).hex
-	@$(AVRDUDE) -vD -c$(PROGRAMMER) -b$(BAUD_RATE) -p$(MCU) -P$(PORT) -Uflash:w:$<:i
+upload: $(NAME).hex $(PORT)
+	@$(AVRDUDE) -vD -c$(PROGRAMMER) -b$(PROG_BAUD) -p$(MCU) -P$(PORT) -Uflash:w:$<:i
 
 list: $(NAME).lss
 
-tty:
-	@echo '  STTY -F$(PORT) cs8 parenb -parodd cstopb raw -echo 9600'
-	@$(STTY) -F$(PORT) cs8 parenb -parodd cstopb raw -echo 9600
+tty: $(PORT)
+	@echo '  STTY -F$(PORT) $(MODE) $(BAUD)'
+	@$(STTY) -F$(PORT) $(MODE) $(BAUD)
+
+cat: $(PORT)
+	@$(CAT) $(PORT)
 
 clean:
 	rm -f *.o *.elf *.hex *.lss
