@@ -21,7 +21,8 @@
 #define serial_init(baud, mode)\
 	serial_baud_##baud();\
 	serial_mode_##mode();\
-	serial_rxtx();\
+	serial_transmitter_enable();\
+	serial_receiver_enable();\
 	serial_interrupt_rx_enable()
 
 #ifndef ALLINONE
