@@ -65,7 +65,7 @@ volatile uint8_t events = EV_NONE;
 #undef SHA1_SHORTCODE
 
 static void
-data_reset()
+data_reset(void)
 {
 	unsigned int i;
 
@@ -110,7 +110,7 @@ timer1_interrupt_a()
 }
 
 static void
-handle_serial_input()
+handle_serial_input(void)
 {
 	while (1) {
 		switch (serial_getchar()) {
@@ -169,8 +169,8 @@ handle_serial_input()
 	}
 }
 
-__attribute__((noreturn)) int
-main()
+int __attribute__((noreturn))
+main(void)
 {
 	serial_init(9600, 8e2);
 

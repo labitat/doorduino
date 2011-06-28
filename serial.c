@@ -64,13 +64,13 @@ serial_interrupt_dre()
 }
 
 EXPORT uint8_t
-serial_available()
+serial_available(void)
 {
 	return serial_input.start != serial_input.end;
 }
 
 EXPORT char
-serial_getchar()
+serial_getchar(void)
 {
 	uint8_t start = serial_input.start;
 	char r;
