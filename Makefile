@@ -27,7 +27,7 @@ PROG_BAUD  = 57600
 #PORT       = /dev/ttyACM0
 #PROG_BAUD  = 115200
 
-MODE_RAW = raw -echo
+MODE_RAW = raw -echo -hup
 MODE_7   = cs7
 MODE_8   = cs8
 MODE_N   = -parenb
