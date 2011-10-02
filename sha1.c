@@ -8,29 +8,33 @@
  * Still 100% Public Domain
  */
 
-#ifndef ALLINONE
 #ifdef SHA1_TEST
 #include <stdlib.h>
 #include <stdio.h>
 #endif
+
 #include <string.h>
 #include <inttypes.h>
 
-#define EXPORT
-#endif
+#define SHA1_DIGEST_LENGTH 20
+#define SHA1_BLOCKSIZE 64
 
-#include "sha1.h"
+struct sha1_context {
+    uint32_t state[5];
+#ifdef SHA1_TEST
+    uint64_t length;
+#else
+    uint16_t length;
+#endif
+    char     buf[SHA1_BLOCKSIZE];
+};
 
 #define rol(value, bits) (((value) << (bits)) | ((value) >> (32 - (bits))))
 
 /* blk0() and blk() perform the initial expand. */
-#ifdef WORDS_BIGENDIAN
-#define blk0(i) block[i]
-#else
 #define blk0(i) (block[i] = \
 	(block[i]>>24) | ((block[i]<<8) & 0x00FF0000) | \
 	((block[i]>>8) & 0x0000FF00) | (block[i]<<24))
-#endif
 #define blk(i) (block[i & 15] = rol( \
 	block[(i -  3) & 15] ^ block[(i - 8) & 15] ^ \
 	block[(i - 14) & 15] ^ block[i & 15], 1))
@@ -120,7 +124,7 @@ sha1_transform(uint32_t state[5], char buf[SHA1_BLOCKSIZE])
 }
 
 /* initialize new context */
-EXPORT void
+static void
 sha1_init(struct sha1_context *ctx)
 {
 	/* SHA1 initialization constants */
@@ -133,7 +137,7 @@ sha1_init(struct sha1_context *ctx)
 }
 
 /* hash more data */
-EXPORT void
+static void
 sha1_update(struct sha1_context *ctx, const char *data, size_t len)
 {
 	uint8_t offset = ctx->length & (SHA1_BLOCKSIZE - 1);
@@ -161,14 +165,14 @@ sha1_update(struct sha1_context *ctx, const char *data, size_t len)
 }
 
 /* end hashing and return the final hash */
-EXPORT void
+static void
 sha1_final(struct sha1_context *ctx, char out[SHA1_DIGEST_LENGTH])
 {
 	uint8_t offset = ctx->length & (SHA1_BLOCKSIZE - 1);
 	uint8_t i;
 
 	/* append the '1' bit */
-	ctx->buf[offset++] = 0x80;
+	ctx->buf[offset++] = (char)0x80;
 
 	/* if there are less than 8 bytes of the buffer free
 	 * for the bitsize, append zeros and transform */
@@ -184,33 +188,25 @@ sha1_final(struct sha1_context *ctx, char out[SHA1_DIGEST_LENGTH])
 		ctx->buf[offset++] = 0;
 
 	/* store bitsize big-endian and do the final transform */
-#ifdef WORD_BIGENDIAN
-	memcpy(ctx->buf + offset, &ctx->length, sizeof(ctx->length));
-#else
-	/*
+#ifdef SHA1_TEST
 	ctx->buf[offset++] = (ctx->length >> 53) & 0xff;
 	ctx->buf[offset++] = (ctx->length >> 45) & 0xff;
 	ctx->buf[offset++] = (ctx->length >> 37) & 0xff;
 	ctx->buf[offset++] = (ctx->length >> 29) & 0xff;
 	ctx->buf[offset++] = (ctx->length >> 21) & 0xff;
 	ctx->buf[offset++] = (ctx->length >> 13) & 0xff;
-	*/
+#endif
 	ctx->buf[offset++] = (ctx->length >>  5) & 0xff;
 	ctx->buf[offset++] = (ctx->length <<  3) & 0xff;
-#endif
 	sha1_transform(ctx->state, ctx->buf);
 
 	/* copy output */
-#ifdef WORD_BIGENDAN
-	memcpy(out, ctx->state, SHA1_DIGEST_LENGTH);
-#else
 	for (i = 0; i < 5; i++) {
 		*out++ = (ctx->state[i] >> 24) & 0xff;
 		*out++ = (ctx->state[i] >> 16) & 0xff;
 		*out++ = (ctx->state[i] >>  8) & 0xff;
 		*out++ =  ctx->state[i]        & 0xff;
 	}
-#endif
 }
 
 #ifdef SHA1_TEST

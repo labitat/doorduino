@@ -15,11 +15,13 @@
  * along with doorduino.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef ALLINONE
-#include <arduino/serial.h>
-
-#define EXPORT
-#endif
+#define serial_init(baud, mode) do {\
+	serial_baud_##baud();\
+	serial_mode_##mode();\
+	serial_transmitter_enable();\
+	serial_receiver_enable();\
+	serial_interrupt_rx_enable();\
+	} while (0)
 
 #ifndef SERIAL_INBUF
 #define SERIOL_INBUF 128
@@ -63,13 +65,13 @@ serial_interrupt_dre()
 	}
 }
 
-EXPORT uint8_t
+static uint8_t
 serial_available(void)
 {
 	return serial_input.start != serial_input.end;
 }
 
-EXPORT char
+static char
 serial_getchar(void)
 {
 	uint8_t start = serial_input.start;
@@ -84,7 +86,7 @@ serial_getchar(void)
 	return r;
 }
 
-EXPORT void
+static void
 serial_print(const char *str)
 {
 	uint8_t end = serial_output.end;
@@ -101,7 +103,7 @@ static char serial_hexdigit[] = {
 	'8', '9', 'A', 'B', 'C', 'D', 'E', 'F'
 };
 
-EXPORT void
+static void
 serial_hexdump(const void *data, size_t len)
 {
 	const uint8_t *p = data;

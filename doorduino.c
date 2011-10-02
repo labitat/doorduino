@@ -24,12 +24,6 @@
 #include <arduino/timer1.h>
 #include <arduino/sleep.h>
 
-#define ALLINONE
-#define EXPORT static
-
-#include "serial.h"
-#include "sha1.h"
-
 #define PIN_CLK         2
 #define PIN_DATA        3
 #define PIN_GREEN_LED   4
