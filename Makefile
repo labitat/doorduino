@@ -1,31 +1,39 @@
-CC      = avr-gcc
-OBJCOPY = avr-objcopy
-OBJDUMP = avr-objdump
-AVRDUDE = avrdude
-STTY    = stty
-SED     = sed
-CAT     = cat
+## Name your project
+NAME = doorduino
+FILES = doorduino.c sha1.h sha1.c serial.c
+
+## Point this to the directory where you did
+##   git clone git://github.com/esmil/onuidra-headers.git arduino
 ARDUINO_HEADERS = .
 
-NAME = doorduino
+## Change this according to your code to make the tty and cat targets work
+BAUD     = 9600
+MODE     = $(MODE_RAW) $(MODE_8) $(MODE_E) $(MODE_2)# 8E2
 
-FORMAT     = ihex
-PROGRAMMER = arduino
-CFLAGS     = -O2 -g -mmcu=$(MCU) -DF_CPU=$(F_CPU) -I$(ARDUINO_HEADERS) \
-             -funsigned-char -fpack-struct -fshort-enums \
-             -Wall -Wextra -Wno-variadic-macros -pedantic
+## Uncomment your arduino version below
 
 ## Duemilanove
 MCU        = atmega328p
 F_CPU      = 16000000UL
 PORT       = /dev/ttyUSB0
+PROGRAMMER = arduino
 PROG_BAUD  = 57600
 
 ## Uno
 #MCU        = atmega328p
 #F_CPU      = 16000000UL
 #PORT       = /dev/ttyACM0
+#PROGRAMMER = arduino
 #PROG_BAUD  = 115200
+
+CC      = avr-gcc
+OBJCOPY = avr-objcopy
+OBJDUMP = avr-objdump
+NM      = avr-nm
+AVRDUDE = avrdude
+STTY    = stty
+SED     = sed
+CAT     = cat
 
 MODE_RAW = raw -echo -hup
 MODE_7   = cs7
@@ -36,34 +44,42 @@ MODE_O   = parenb parodd
 MODE_1   = -cstopb
 MODE_2   = cstopb
 
-## Change this according to your code to make the tty and cat targets work
-BAUD     = 9600
-MODE     = $(MODE_RAW) $(MODE_8) $(MODE_E) $(MODE_2)# 8E2
+OPT        = 2
+CFLAGS     = -O$(OPT) -pipe -gdwarf-2
+CFLAGS    += -mmcu=$(MCU) -DF_CPU=$(F_CPU) -I$(ARDUINO_HEADERS)
+CFLAGS    += -std=gnu99 -fstrict-aliasing
+CFLAGS    += -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums
+## Uncomment to create listing file
+#CFLAGS    += -Wa,-adhlns=$(<:.c=.lst)
+CFLAGS    += -Wall -Wextra -Wno-variadic-macros -pedantic
+
+## Uncomment to create a map file
+#LDFLAGS   += -Wl,-Map=$(NAME).map,--cref
+## Uncomment for minimal printf suport
+#LDFLAGS   += -Wl,-u,vfprintf -lprintf_min
+## Uncomment for printf support with floating point (needs -lm below)
+#LDFLAGS   += -Wl,-u,vfprintf -lprintf_flt
+## Uncomment for minimal scanf support
+#LDFLAGS   += -Wl,-u,vfscanf -lscanf_min
+## Uncomment for scanf support with floating point (needs -lm below)
+#LDFLAGS   += -Wl,-u,vfscanf -lscanf_flt
+## Uncomment for trigonometry and other floating point functions
+#LDFLAGS   += -lm
+
+FILES     ?= $(NAME).c
 
 .PHONY: all list tty cat
-.PRECIOUS: %.o %.elf
+.PRECIOUS: %.elf
 
 all: $(NAME).hex
 
-%.o: %.c %.h
+$(NAME).elf: $(FILES)
 	@echo '  CC $@'
-	@$(CC) $(CFLAGS) -c $< -o $@
-
-%.o: %.c
-	@echo '  CC $@'
-	@$(CC) $(CFLAGS) -c $< -o $@
-
-doorduino.o: doorduino.c sha1.h sha1.c serial.c
-	@echo '  CC $@'
-	@$(CC) $(CFLAGS) -c $< -o $@
-
-%.elf: %.o
-	@echo '  LD $@'
-	@$(CC) $(CFLAGS) $(LDFLAGS) $^ -o $@
+	@$(CC) $(CFLAGS) $< -o $@ $(LDFLAGS)
 
 %.hex: %.elf
 	@echo '  OBJCOPY $@'
-	@$(OBJCOPY) -O $(FORMAT) -R .eeprom -S $< $@
+	@$(OBJCOPY) -O ihex -R .eeprom -S $< $@
 	@echo "  $$((0x$$($(OBJDUMP) -h $@ | $(SED) -n '6{s/^  0 \.sec1         //;s/ .*//;p}'))) bytes"
 
 
@@ -72,8 +88,13 @@ doorduino.o: doorduino.c sha1.h sha1.c serial.c
 	@echo '  OBJDUMP > $@'
 	@$(OBJDUMP) -h -S $< > $@
 
+# Create a symbol table from ELF output file.
+%.sym: %.elf
+	@echo '  NM $@'
+	@$(NM) -n $< > $@
+
 upload: $(NAME).hex $(PORT)
-	@$(AVRDUDE) -vD -c$(PROGRAMMER) -b$(PROG_BAUD) -p$(MCU) -P$(PORT) -Uflash:w:$<:i
+	@$(AVRDUDE) -vD -p$(MCU) -P$(PORT) -c$(PROGRAMMER) -b$(PROG_BAUD) -Uflash:w:$<:i
 
 list: $(NAME).lss
 
@@ -85,4 +106,4 @@ cat: $(PORT)
 	@$(CAT) $(PORT)
 
 clean:
-	rm -f *.o *.elf *.hex *.lss
+	rm -f *.elf *.hex *.map *.lst *.lss *.sym
