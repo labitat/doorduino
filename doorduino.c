@@ -54,6 +54,8 @@ volatile uint8_t events = EV_NONE;
 #undef SERIAL_INBUF
 #undef SERIAL_OUTBUF
 
+#include "softserial.c"
+
 #define SHA1_SHORTCODE
 #include "sha1.c"
 #undef SHA1_SHORTCODE
@@ -163,6 +165,40 @@ handle_serial_input(void)
 	}
 }
 
+static void
+handle_rfid_input(void)
+{
+	static char buf[10];
+	static uint8_t idx = 0;
+	int c;
+	uint8_t i;
+	for (;;) {
+		c = softserial_getchar();
+		switch (c) {
+		case SOFTSERIAL_EOF:
+			return;
+		case 10:
+			idx = 0;
+			break;
+		case 13:
+			if (idx == 10) {
+				/*
+				  We got an RFID tag.
+				  Copy it into the card reader buffer to
+				  emulate a read card data string.
+				*/
+				data_reset();
+				for (i = 0; i < 10 && cnt < 255; ++i, ++cnt)
+					data[cnt] = buf[i];
+			}
+		default:
+			if (idx < 10)
+				buf[idx++] = c;
+			break;
+		}
+	}
+}
+
 int
 main(void)
 {
@@ -196,6 +232,8 @@ main(void)
 	timer1_clock_d64();
 	timer1_interrupt_a_enable();
 
+        softserial_init();
+
 	sleep_mode_idle();
 
 	while (1) {
@@ -205,7 +243,7 @@ main(void)
 		 * http://www.nongnu.org/avr-libc/user-manual/group__avr__sleep.html
 		 */
 		cli();
-		if (events == EV_NONE) {
+		if (events == EV_NONE && !ev_softserial) {
 			sleep_enable();
 			sei();
 			sleep_cpu();
@@ -217,6 +255,10 @@ main(void)
 		if (events & EV_SERIAL) {
 			handle_serial_input();
 			continue;
+		}
+
+		if (ev_softserial) {
+			handle_rfid_input();
 		}
 
 		events &= ~EV_DATA;
