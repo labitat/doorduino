@@ -24,7 +24,7 @@
 	} while (0)
 
 #ifndef SERIAL_INBUF
-#define SERIOL_INBUF 128
+#define SERIAL_INBUF 128
 #endif
 
 #ifndef SERIAL_OUTBUF
