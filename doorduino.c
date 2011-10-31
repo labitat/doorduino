@@ -30,6 +30,7 @@
 #define PIN_YELLOW_LED  5
 #define PIN_OPEN_LOCK   6
 #define PIN_DAYMODE     7
+#define PIN_RFID_ENABLE 13
 #define PIN_STATUS_LED  A5
 
 static volatile char clk = 0;
@@ -181,15 +182,20 @@ handle_rfid_input(void)
 			idx = 0;
 			break;
 		case 13:
-			if (idx == 10) {
+			if (idx == 10 && cnt == 0) {
 				/*
 				  We got an RFID tag.
 				  Copy it into the card reader buffer to
 				  emulate a read card data string.
 				*/
-				data_reset();
 				for (i = 0; i < 10 && cnt < 255; ++i, ++cnt)
 					data[cnt] = buf[i];
+				for (i = 0; i < 3; i++) {
+					pin_low(PIN_YELLOW_LED);
+					_delay_ms(80);
+					pin_high(PIN_YELLOW_LED);
+					_delay_ms(80);
+				}
 			}
 		default:
 			if (idx < 10)
@@ -233,6 +239,8 @@ main(void)
 	timer1_interrupt_a_enable();
 
         softserial_init();
+	pin_mode_output(PIN_RFID_ENABLE);
+	pin_low(PIN_RFID_ENABLE);
 
 	sleep_mode_idle();
 
