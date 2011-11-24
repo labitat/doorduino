@@ -76,6 +76,7 @@ pin_8to13_interrupt()
     delta = current - softserial_startbit_time;
     while (softserial_bit_count < 8)
     {
+      // delta * 154 <= 154 * 16e6 Hz / 256 clocks/timertick / 9600 baud * (count+1.5)
       if ((uint16_t)delta * 154 <= (uint16_t)softserial_bit_count*1000 + 1500)
         break;
       /*
@@ -118,7 +119,7 @@ softserial_init(void)
   timer0_clock_off();
   timer0_interrupt_a_disable();
   timer0_mode_normal();
-  timer0_clock_d1024();  /* 16MHz / 256 -> 16usec / tick. */
+  timer0_clock_d256();  /* 16MHz / 256 -> 16usec / tick. */
 
   pin_mode_input(SOFTSERIAL_RX_PIN);
   softserial_pin_oldstate = pin_is_high(SOFTSERIAL_RX_PIN);

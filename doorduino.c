@@ -166,23 +166,48 @@ handle_serial_input(void)
 	}
 }
 
+static uint8_t
+hex2int(char c)
+{
+	if (c >= '0' && c <= '9')
+		return c - '0';
+	else if (c >= 'a' && c <= 'f')
+		return c - ('a' - 10);
+	else if (c >= 'A' && c <= 'F')
+		return c - ('A' - 10);
+	else
+		return 0xff;
+}
+
 static void
 handle_rfid_input(void)
 {
-	static char buf[10];
+	static char buf[14];
 	static uint8_t idx = 0;
 	int c;
+	uint8_t checksum;
 	uint8_t i;
+
 	for (;;) {
 		c = softserial_getchar();
 		switch (c) {
 		case SOFTSERIAL_EOF:
 			return;
-		case 10:
+		case 2:
 			idx = 0;
 			break;
-		case 13:
-			if (idx == 10 && cnt == 0) {
+		case 3:
+			if (idx == 14 && cnt == 0) {
+				/* Check for correct checksum and CR / LF */
+				checksum = 0;
+				for (i = 0; i < 12; i += 2)
+					checksum ^= ((hex2int(buf[i]) << 4) |
+						     hex2int(buf[i+1]));
+				if (checksum)
+					break;
+				if (buf[12] != 13 || buf[13] != 10)
+					break;
+
 				/*
 				  We got an RFID tag.
 				  Copy it into the card reader buffer to
@@ -198,8 +223,11 @@ handle_rfid_input(void)
 				}
 			}
 		default:
-			if (idx < 10)
+			if (idx < 14)
+			{
 				buf[idx++] = c;
+				second = 0;
+			}
 			break;
 		}
 	}
