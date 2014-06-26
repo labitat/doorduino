@@ -51,14 +51,14 @@ volatile uint8_t events = EV_NONE;
 
 #define SERIAL_INBUF 64
 #define SERIAL_OUTBUF 128
-#include "serial.c"
+#include "tools/serial.c"
 #undef SERIAL_INBUF
 #undef SERIAL_OUTBUF
 
-#include "softserial.c"
+#include "tools/softserial.c"
 
 #define SHA1_SHORTCODE
-#include "sha1.c"
+#include "tools/sha1.c"
 #undef SHA1_SHORTCODE
 
 static void
@@ -234,7 +234,7 @@ handle_rfid_input(void)
 }
 
 int
-main(void)
+door_main(void)
 {
 	serial_init(9600, 8e2);
 
@@ -323,3 +323,11 @@ main(void)
 		}
 	}
 }
+
+#ifndef ARDUINO
+int
+main(int argc __attribute__((unused)), char *argv[] __attribute__((unused)))
+{
+  door_main();
+}
+#endif

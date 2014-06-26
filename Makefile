@@ -1,6 +1,6 @@
 ## Name your project
 NAME = doorduino
-FILES = doorduino.c sha1.c serial.c softserial.c
+FILES = doorduino.c tools/sha1.c tools/serial.c tools/softserial.c
 
 ## Point this to the directory where you did
 ##   git clone git://github.com/esmil/oniudra-headers.git arduino
