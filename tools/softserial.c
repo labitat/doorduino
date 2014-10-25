@@ -123,6 +123,6 @@ softserial_init(void)
 
   pin_mode_input(SOFTSERIAL_RX_PIN);
   softserial_pin_oldstate = pin_is_high(SOFTSERIAL_RX_PIN);
-  pin12_interrupt_mask();
+  pin_interrupt_mask(SOFTSERIAL_RX_PIN);
   pin_8to13_interrupt_enable();
 }
