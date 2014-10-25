@@ -1,6 +1,7 @@
 ## Name your project
 NAME = doorduino
-FILES = doorduino.c tools/sha1.c tools/serial.c tools/softserial.c
+FILES = doorduino.c tools/mfrc522.c
+INCLUDES = tools/sha1.c tools/serial.c tools/softserial.c
 
 ## Point this to the directory where you did
 ##   git clone git://github.com/esmil/oniudra-headers.git arduino
@@ -77,7 +78,7 @@ all: $(NAME).hex
 
 %.elf: $(or $(FILES),%.c)
 	@echo '  CC $@'
-	@$(CC) $(CFLAGS) $< -o $@ $(LDFLAGS)
+	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
 %.hex: %.elf
 	@echo '  OBJCOPY $@'

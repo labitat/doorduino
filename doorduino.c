@@ -24,13 +24,15 @@
 #include <arduino/timer1.h>
 #include <arduino/sleep.h>
 
+#include "tools/mfrc522.h"
+
 #define PIN_CLK         2
 #define PIN_DATA        3
 #define PIN_GREEN_LED   4
 #define PIN_YELLOW_LED  5
 #define PIN_OPEN_LOCK   6
 #define PIN_DAYMODE     7
-#define PIN_RFID_ENABLE 13
+#define PIN_RFID_ENABLE 9
 #define PIN_STATUS_LED  A5
 
 static volatile char clk = 0;
@@ -179,6 +181,26 @@ hex2int(char c)
 		return 0xff;
 }
 
+
+static void
+copy_card_data_to_buffer(char *buf, uint8_t len)
+{
+  uint8_t i;
+  /*
+    We got an RFID tag.
+    Copy it into the card reader buffer to
+    emulate a read card data string.
+  */
+  for (i = 0; i < len && cnt < 255; ++i, ++cnt)
+    data[cnt] = buf[i];
+  for (i = 0; i < 3; i++) {
+    pin_low(PIN_YELLOW_LED);
+    _delay_ms(80);
+    pin_high(PIN_YELLOW_LED);
+    _delay_ms(80);
+  }
+}
+
 static void
 handle_rfid_input(void)
 {
@@ -207,20 +229,7 @@ handle_rfid_input(void)
 					break;
 				if (buf[12] != 13 || buf[13] != 10)
 					break;
-
-				/*
-				  We got an RFID tag.
-				  Copy it into the card reader buffer to
-				  emulate a read card data string.
-				*/
-				for (i = 0; i < 10 && cnt < 255; ++i, ++cnt)
-					data[cnt] = buf[i];
-				for (i = 0; i < 3; i++) {
-					pin_low(PIN_YELLOW_LED);
-					_delay_ms(80);
-					pin_high(PIN_YELLOW_LED);
-					_delay_ms(80);
-				}
+                                copy_card_data_to_buffer(buf, 10);
 			}
 		default:
 			if (idx < 14)
@@ -233,12 +242,30 @@ handle_rfid_input(void)
 	}
 }
 
+
+static void
+handle_mfr_input(char *data, uint8_t len)
+{
+  if (len == 0)
+    return;                                     /* No data */
+  /*
+    The MFR sends card data continously while the card is close to the reader.
+    We only process it when the buffer is empty; this ensures that we only
+    get the card data once. An idle timeout elsewhere clears the buffer after
+    some time of inactivity.
+  */
+  if (cnt !=0)
+    return;
+  copy_card_data_to_buffer(data, len);
+}
+
+
 int
 door_main(void)
 {
 	serial_init(9600, 8e2);
 
-	pin13_mode_output();
+	pin_mode_output(PIN_RFID_ENABLE);
 
 	pin_mode_input(PIN_CLK);         /* clk             */
 	pin_mode_input(PIN_DATA);        /* data            */
@@ -269,6 +296,8 @@ door_main(void)
         softserial_init();
 	pin_mode_output(PIN_RFID_ENABLE);
 	pin_low(PIN_RFID_ENABLE);
+
+        init_mfrc522();
 
 	sleep_mode_idle();
 
@@ -314,7 +343,29 @@ door_main(void)
 			continue;
 		}
 
+                if (events & EV_TIME)
+                {
+                  char buf[20];
+                  uint8_t len;
+
+                  len = check_mfrc522(buf, sizeof(buf));
+                  handle_mfr_input(buf, len);
+                }
+
 		events &= ~EV_TIME;
+
+                /*
+                  This code can be used during development, to simulate the
+                  press of the '#' button 8 seconds after every idle timeout:
+
+                if (second == 32 && cnt < 255)
+                {
+                  data[cnt] = 0xB4;
+                  cnt++;
+                  events |= EV_DATA;
+                }
+                */
+
 		if (second > 10*4) {
 			serial_print("ALIVE\n");
 			second = 0;

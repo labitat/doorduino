@@ -1,7 +1,7 @@
 #include <arduino/timer0.h>
 
 /* Also need to change the interrupt references if changing pin */
-#define SOFTSERIAL_RX_PIN 12
+#define SOFTSERIAL_RX_PIN 8
 
 static uint8_t ev_softserial = 0;
 static uint8_t softserial_pin_oldstate;

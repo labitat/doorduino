@@ -86,7 +86,7 @@ serial_getchar(void)
 	return r;
 }
 
-static void
+void
 serial_print(const char *str)
 {
 	uint8_t end = serial_output.end;
